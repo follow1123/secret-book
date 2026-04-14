@@ -1,11 +1,12 @@
 package main
 
 type Book struct {
-	Secrets         []Secret         `json:"secrets"`
-	ModifiedSecrets []ModifiedSecret `json:"modified_secrets"`
+	Secrets        []Secret        `json:"secrets"`
+	HistorySecrets []HistorySecret `json:"modified_secrets"`
 }
 
 type Secret struct {
+	Id         string `json:"id"`
 	Platform   string `json:"platform"`
 	Account    string `json:"account"`
 	Password   string `json:"password"`
@@ -13,7 +14,8 @@ type Secret struct {
 	CreateTime string `json:"create_time"`
 }
 
-type ModifiedSecret struct {
+type HistorySecret struct {
 	Secret
 	ModifiedTime string `json:"modified_time"`
+	DeletedTime  string `json:"deleted_time"`
 }
