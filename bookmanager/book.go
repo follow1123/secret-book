@@ -1,8 +1,8 @@
-package main
+package bookmanager
 
 type Book struct {
 	Secrets        []Secret        `json:"secrets"`
-	HistorySecrets []HistorySecret `json:"modified_secrets"`
+	HistorySecrets []HistorySecret `json:"modified_secrets,omitempty"`
 }
 
 type Secret struct {

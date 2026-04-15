@@ -1,9 +1,10 @@
-package main
+package bookmanager
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -12,20 +13,44 @@ import (
 )
 
 type BookManager struct {
-	book *Book
+	book     *Book
+	bookPath string
 }
 
 func New(bookPath string) (*BookManager, error) {
-	data, err := os.ReadFile(bookPath)
+	_, err := os.Stat(bookPath)
+	notExists := false
 	if err != nil {
-		return nil, fmt.Errorf("read book path: %s error:\n\t%w", bookPath, err)
-	}
-	book := &Book{}
-	if err := json.Unmarshal(data, book); err != nil {
-		return nil, fmt.Errorf("unmarshal book path: %s error:\n\t%w", bookPath, err)
+		if os.IsNotExist(err) {
+			notExists = true
+		} else {
+			return nil, fmt.Errorf("check book path %s error:\n\t%w", bookPath, err)
+		}
 	}
 
-	return &BookManager{book: book}, nil
+	book := &Book{}
+	if !notExists {
+		data, err := os.ReadFile(bookPath)
+		if err != nil {
+			return nil, fmt.Errorf("read book path: %s error:\n\t%w", bookPath, err)
+		}
+		if err := json.Unmarshal(data, book); err != nil {
+			return nil, fmt.Errorf("unmarshal book path: %s error:\n\t%w", bookPath, err)
+		}
+	}
+
+	return &BookManager{book: book, bookPath: bookPath}, nil
+}
+
+func (m *BookManager) Save() error {
+	data, err := json.MarshalIndent(m.book, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal data to json error:\n\t%w", err)
+	}
+	if err := os.WriteFile(m.bookPath, data, 0664); err != nil {
+		return fmt.Errorf("save to %s error:\n\t%w", m.bookPath, err)
+	}
+	return nil
 }
 
 func (m *BookManager) ListPlatforms() []string {
@@ -82,7 +107,7 @@ func (m *BookManager) Add(secret Secret) error {
 		return fmt.Errorf("account cannot be empty")
 	}
 
-	if m.GetByPlatformAccount(secret.Platform, secret.Account) == nil {
+	if m.GetByPlatformAccount(secret.Platform, secret.Account) != nil {
 		return fmt.Errorf("account: %s is duplicated on the platform: %s", secret.Account, secret.Platform)
 	}
 
@@ -148,20 +173,28 @@ func (m *BookManager) updateByIndex(index int, secret Secret) {
 		ModifiedTime: currentTime(),
 	}
 
-	// 添加到历史列表内
-	m.book.HistorySecrets = append(m.book.HistorySecrets, historySecret)
-
+	updateFields := 0
 	if platform != "" {
 		m.book.Secrets[index].Platform = platform
+		updateFields += 1
 	}
 	if account != "" {
 		m.book.Secrets[index].Account = account
+		updateFields += 1
 	}
 	if password != "" {
 		m.book.Secrets[index].Password = password
+		updateFields += 1
 	}
 	if remark != "" {
 		m.book.Secrets[index].Remark = remark
+		updateFields += 1
+	}
+
+	// 有属性被修改才添加到历史列表内
+	if updateFields > 0 {
+		// 添加到历史列表内
+		m.book.HistorySecrets = append(m.book.HistorySecrets, historySecret)
 	}
 }
 
@@ -202,4 +235,12 @@ func currentTime() string {
 
 func nextId() string {
 	return strings.ReplaceAll(uuid.New().String(), "-", "")
+}
+
+func DefaultSecretsFile() string {
+	path, err := os.Getwd()
+	if err != nil {
+		panic("read current working directory error")
+	}
+	return filepath.Join(path, "secrets.json")
 }

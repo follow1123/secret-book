@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"github.com/follow1123/secret-book/cmd"
+)
 
 func main() {
-	fmt.Printf("\"hello world!\": %v\n", "hello world!")
+	cmd.Execute()
 }
