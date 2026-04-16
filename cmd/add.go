@@ -6,8 +6,9 @@ import (
 )
 
 var addCmd = &cobra.Command{
-	Use:          "add platform account [remark]",
-	Short:        "add secret",
+	Use:   "add platform account [remark]",
+	Short: "add secret",
+	// Args:         cobra.ExactArgs(2),
 	SilenceUsage: true, // 关闭错误时的帮助信息
 	GroupID:      cmdGrpDefault,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -20,7 +21,11 @@ var addCmd = &cobra.Command{
 			Account:  args[1],
 		}
 
-		// todo 使用 golang.org/x/term 隐藏密码输入
+		password, err := readPassword()
+		if err != nil {
+			return err
+		}
+		secret.Password = password
 
 		if len(args) > 2 {
 			secret.Remark = args[2]

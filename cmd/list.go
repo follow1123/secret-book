@@ -31,9 +31,9 @@ var listCmd = &cobra.Command{
 		} else {
 			tableData = append(tableData, []string{"Id", "Platform", "Account", "Remark", "Create Time"})
 			platform := args[0]
-			for _, secret := range bm.ListByPlatform(platform) {
-				// todo 默认只显示固定长度文本的 remark 字段，需要使用 info 命令查看详细信息
-				tableData = append(tableData, []string{secret.Id, secret.Platform, secret.Account, secret.Remark, secret.CreateTime})
+			secrets := bm.ListByPlatform(platform)
+			for _, secret := range secrets {
+				tableData = append(tableData, []string{secret.Id[:6], secret.Platform, secret.Account, truncateText(secret.Remark, 10), secret.CreateTime})
 			}
 		}
 
@@ -52,4 +52,17 @@ var listCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(listCmd)
+}
+
+func truncateText(text string, maxLen int) string {
+	// 获取字符串的 rune 切片（按字符切分）
+	runes := []rune(text)
+
+	// 如果字符长度小于 maxLen，直接返回原始字符串
+	if len(runes) <= maxLen {
+		return text
+	}
+
+	// 截取前 maxLen 个字符
+	return string(runes[:maxLen])
 }

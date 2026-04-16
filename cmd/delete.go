@@ -13,6 +13,8 @@ var deleteCmd = &cobra.Command{
 	SilenceUsage: true, // 关闭错误时的帮助信息
 	GroupID:      cmdGrpDefault,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// todo 实现强制删除功能，直接删除，不保留到历史列表内
+		// todo 添加 -h 选项，实现根据id删除历史列表内的数据
 		bm, err := bookmanager.New(bookmanager.DefaultSecretsFile())
 		if err != nil {
 			return err

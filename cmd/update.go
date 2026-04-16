@@ -9,6 +9,7 @@ var (
 	updateFlagPlatform string
 	updateFlagAccount  string
 	updateFlagRemark   string
+	updateFlagPassword bool
 )
 
 var updateCmd = &cobra.Command{
@@ -29,7 +30,13 @@ var updateCmd = &cobra.Command{
 			Account:  updateFlagAccount,
 			Remark:   updateFlagRemark,
 		}
-		// todo 使用 golang.org/x/term 隐藏密码输入
+		if updateFlagPassword {
+			password, err := readPassword()
+			if err != nil {
+				return err
+			}
+			secret.Password = password
+		}
 
 		if err := bm.UpdateByIdPrefix(id, secret); err != nil {
 			return err
@@ -47,6 +54,7 @@ func init() {
 	updateCmd.Flags().StringVarP(&updateFlagPlatform, "platform", "p", "", "update platform")
 	updateCmd.Flags().StringVarP(&updateFlagAccount, "account", "a", "", "update account")
 	updateCmd.Flags().StringVarP(&updateFlagRemark, "remark", "r", "", "update remark")
+	updateCmd.Flags().BoolVarP(&updateFlagPassword, "password", "P", false, "update password")
 
 	rootCmd.AddCommand(updateCmd)
 }

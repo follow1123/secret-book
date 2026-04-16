@@ -77,13 +77,88 @@ func (m *BookManager) ListByPlatform(platform string) []Secret {
 			secrets = append(secrets, secret)
 		}
 	}
+
+	if len(secrets) > 1 {
+		slices.SortFunc(secrets, func(a, b Secret) int {
+			aTime, err := time.Parse("2006-01-02 15:04:05", a.CreateTime)
+			if err != nil {
+				panic(fmt.Errorf("parse time %s error:\n\t%w", a.CreateTime, err))
+			}
+
+			bTime, err := time.Parse("2006-01-02 15:04:05", b.CreateTime)
+			if err != nil {
+				panic(fmt.Errorf("parse time %s error:\n\t%w", b.CreateTime, err))
+			}
+			if aTime.After(bTime) {
+				return -1
+			} else if aTime.Before(bTime) {
+				return 1
+			}
+			return 0
+		})
+	}
 	return secrets
 }
 
-func (m *BookManager) GetByIdPerfix(idPerfix string) map[int]Secret {
+func (m *BookManager) ListHistory(secret Secret) []HistorySecret {
+	historySecrets := make([]HistorySecret, 0)
+	var (
+		hasPlatformCond = secret.Platform != ""
+		hasAccountCond  = secret.Account != ""
+		hasPasswordCond = secret.Password != ""
+		hasRemarkCond   = secret.Remark != ""
+	)
+
+	for _, hs := range m.book.HistorySecrets {
+		if hasPlatformCond {
+			if hs.Platform == secret.Platform {
+				historySecrets = append(historySecrets, hs)
+			}
+		}
+		if hasAccountCond {
+			if strings.Contains(hs.Account, secret.Account) {
+				historySecrets = append(historySecrets, hs)
+			}
+		}
+		if hasPasswordCond {
+			if strings.Contains(hs.Password, secret.Password) {
+				historySecrets = append(historySecrets, hs)
+			}
+		}
+		if hasRemarkCond {
+			if strings.Contains(hs.Remark, secret.Remark) {
+				historySecrets = append(historySecrets, hs)
+			}
+		}
+		if !(hasPlatformCond || hasAccountCond || hasPasswordCond || hasRemarkCond) {
+			historySecrets = append(historySecrets, hs)
+		}
+	}
+
+	slices.SortFunc(historySecrets, func(a, b HistorySecret) int {
+		aTime, err := time.Parse("2006-01-02 15:04:05", a.OperationTime)
+		if err != nil {
+			panic(fmt.Errorf("parse time %s error:\n\t%w", a.OperationTime, err))
+		}
+
+		bTime, err := time.Parse("2006-01-02 15:04:05", b.OperationTime)
+		if err != nil {
+			panic(fmt.Errorf("parse time %s error:\n\t%w", b.OperationTime, err))
+		}
+		if aTime.After(bTime) {
+			return -1
+		} else if aTime.Before(bTime) {
+			return 1
+		}
+		return 0
+	})
+	return historySecrets
+}
+
+func (m *BookManager) GetByIdPerfix(idPrefix string) map[int]Secret {
 	secretMap := make(map[int]Secret)
 	for i, s := range m.book.Secrets {
-		if strings.HasPrefix(s.Id, idPerfix) {
+		if strings.HasPrefix(s.Id, idPrefix) {
 			secretMap[i] = s
 		}
 	}
@@ -124,8 +199,9 @@ func (m *BookManager) deleteByIndex(index int) {
 
 	// 添加到历史列表内
 	m.book.HistorySecrets = append(m.book.HistorySecrets, HistorySecret{
-		Secret:      deleteSecret,
-		DeletedTime: currentTime(),
+		Secret:        deleteSecret,
+		OperationTime: currentTime(),
+		OperationType: Deleted,
 	})
 }
 
@@ -169,8 +245,9 @@ func (m *BookManager) updateByIndex(index int, secret Secret) {
 	remark := strings.TrimSpace(secret.Remark)
 
 	historySecret := HistorySecret{
-		Secret:       m.book.Secrets[index],
-		ModifiedTime: currentTime(),
+		Secret:        m.book.Secrets[index],
+		OperationTime: currentTime(),
+		OperationType: Modified,
 	}
 
 	updateFields := 0

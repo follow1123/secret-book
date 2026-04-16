@@ -1,8 +1,15 @@
 package bookmanager
 
+type OperationType string
+
+const (
+	Modified OperationType = "modified"
+	Deleted  OperationType = "deleted"
+)
+
 type Book struct {
 	Secrets        []Secret        `json:"secrets"`
-	HistorySecrets []HistorySecret `json:"modified_secrets,omitempty"`
+	HistorySecrets []HistorySecret `json:"history_secrets,omitempty"`
 }
 
 type Secret struct {
@@ -16,6 +23,6 @@ type Secret struct {
 
 type HistorySecret struct {
 	Secret
-	ModifiedTime string `json:"modified_time"`
-	DeletedTime  string `json:"deleted_time"`
+	OperationTime string        `json:"operation_time"`
+	OperationType OperationType `json:"operation_type"`
 }

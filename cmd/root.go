@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
+	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 const (
@@ -39,4 +43,13 @@ func init() {
 	rootCmd.Flags().BoolVarP(&rootFlagVersion, "version", "v", false, "print version")
 
 	rootCmd.AddGroup(&cobra.Group{ID: cmdGrpDefault, Title: "Available Commands"})
+}
+
+func readPassword() (string, error) {
+	fmt.Print("Enter Password: ")
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return "", fmt.Errorf("read password error:\n\t%w", err)
+	}
+	return strings.TrimSpace(string(bytePassword)), nil
 }
