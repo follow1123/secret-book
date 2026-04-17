@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/follow1123/secret-book/bookmanager"
@@ -25,22 +24,17 @@ var infoCmd = &cobra.Command{
 		tableData := [][]string{}
 
 		id := args[0]
-		secretMap := bm.GetByIdPerfix(id)
-
-		if len(secretMap) == 0 {
-			return fmt.Errorf("no secret id %s", id)
-		} else if len(secretMap) > 1 {
-			return fmt.Errorf("duplicated id prefix %s", id)
-		} else {
-			for _, secret := range secretMap {
-				tableData = append(tableData, []string{"ID", secret.Id})
-				tableData = append(tableData, []string{"PLATFORM", secret.Platform})
-				tableData = append(tableData, []string{"ACCOUNT", secret.Account})
-				tableData = append(tableData, []string{"PASSWORD", secret.Password})
-				tableData = append(tableData, []string{"REMARK", secret.Remark})
-				tableData = append(tableData, []string{"CREATE TIME", secret.CreateTime})
-			}
+		secret, err := bm.GetSecretByIdPerfix(id)
+		if err != nil {
+			return err
 		}
+
+		tableData = append(tableData, []string{"ID", secret.Id})
+		tableData = append(tableData, []string{"PLATFORM", secret.Platform})
+		tableData = append(tableData, []string{"ACCOUNT", secret.Account})
+		tableData = append(tableData, []string{"PASSWORD", secret.Password})
+		tableData = append(tableData, []string{"REMARK", secret.Remark})
+		tableData = append(tableData, []string{"CREATE TIME", secret.CreateTime})
 
 		if err := table.Bulk(tableData); err != nil {
 			return err

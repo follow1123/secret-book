@@ -155,14 +155,28 @@ func (m *BookManager) ListHistory(secret Secret) []HistorySecret {
 	return historySecrets
 }
 
-func (m *BookManager) GetByIdPerfix(idPrefix string) map[int]Secret {
-	secretMap := make(map[int]Secret)
+func (m *BookManager) GetSecretByIdPerfix(idPrefix string) (*Secret, error) {
+	idx, err := m.GetSecretIndexByIdPerfix(idPrefix)
+	if err != nil {
+		return nil, err
+	}
+	return &m.book.Secrets[idx], nil
+}
+
+func (m *BookManager) GetSecretIndexByIdPerfix(idPrefix string) (int, error) {
+	index := -1
 	for i, s := range m.book.Secrets {
 		if strings.HasPrefix(s.Id, idPrefix) {
-			secretMap[i] = s
+			if index >= 0 {
+				return index, fmt.Errorf("duplicated id prefix %s", idPrefix)
+			}
+			index = i
 		}
 	}
-	return secretMap
+	if index < 0 {
+		return index, fmt.Errorf("data for id prefix %s is not exists", idPrefix)
+	}
+	return index, nil
 }
 
 func (m *BookManager) GetByPlatformAccount(platform string, account string) *Secret {
@@ -193,48 +207,47 @@ func (m *BookManager) Add(secret Secret) error {
 	return nil
 }
 
-func (m *BookManager) deleteByIndex(index int) {
+func (m *BookManager) deleteByIndex(index int, saveToHistory bool) {
 	deleteSecret := m.book.Secrets[index]
 	m.book.Secrets = slices.Delete(m.book.Secrets, index, index+1)
 
-	// 添加到历史列表内
-	m.book.HistorySecrets = append(m.book.HistorySecrets, HistorySecret{
-		Secret:        deleteSecret,
-		OperationTime: currentTime(),
-		OperationType: Deleted,
-	})
+	if saveToHistory {
+		// 添加到历史列表内
+		historySecret := HistorySecret{
+			Secret:        deleteSecret,
+			OperationTime: currentTime(),
+			OperationType: Deleted,
+		}
+		m.book.HistorySecrets = append(m.book.HistorySecrets, historySecret)
+
+		// 重置id
+		historySecret.Id = nextId()
+	}
 }
 
-func (m *BookManager) DeleteById(id string) error {
-	deleteIdx := -1
-	for i, s := range m.book.Secrets {
-		if s.Id == id {
-			deleteIdx = i
-		}
+func (m *BookManager) DeleteByIdPrefix(idPrefix string, saveToHistory bool) error {
+	idx, err := m.GetSecretIndexByIdPerfix(idPrefix)
+	if err != nil {
+		return err
 	}
-
-	if deleteIdx < 0 {
-		return fmt.Errorf("data for id %s is not exists", id)
-	}
-
-	m.deleteByIndex(deleteIdx)
+	m.deleteByIndex(idx, saveToHistory)
 	return nil
 }
 
-func (m *BookManager) DeleteByIdPrefix(idPrefix string) error {
-	secretMap := m.GetByIdPerfix(idPrefix)
-	secretCount := len(secretMap)
-	if secretCount < 0 {
+func (m *BookManager) DeleteHistoryByIdPrefix(idPrefix string) error {
+	index := -1
+	for i, hs := range m.book.HistorySecrets {
+		if strings.HasPrefix(hs.Id, idPrefix) {
+			if index >= 0 {
+				return fmt.Errorf("duplicated id prefix %s", idPrefix)
+			}
+			index = i
+		}
+	}
+	if index < 0 {
 		return fmt.Errorf("data for id prefix %s is not exists", idPrefix)
-
 	}
-	if secretCount > 1 {
-		return fmt.Errorf("duplicated id prefix %s", idPrefix)
-	}
-	for deleteIdx := range secretMap {
-		m.deleteByIndex(deleteIdx)
-	}
-
+	m.book.HistorySecrets = slices.Delete(m.book.HistorySecrets, index, index+1)
 	return nil
 }
 
@@ -249,6 +262,8 @@ func (m *BookManager) updateByIndex(index int, secret Secret) {
 		OperationTime: currentTime(),
 		OperationType: Modified,
 	}
+	// 重置id
+	historySecret.Id = nextId()
 
 	updateFields := 0
 	if platform != "" {
@@ -291,18 +306,12 @@ func (m *BookManager) UpdateById(id string, secret Secret) error {
 }
 
 func (m *BookManager) UpdateByIdPrefix(idPrefix string, secret Secret) error {
-	secretMap := m.GetByIdPerfix(idPrefix)
-	secretCount := len(secretMap)
-	if secretCount < 0 {
-		return fmt.Errorf("data for id prefix %s is not exists", idPrefix)
-	}
-	if secretCount > 1 {
-		return fmt.Errorf("duplicated id prefix %s", idPrefix)
+	idx, err := m.GetSecretIndexByIdPerfix(idPrefix)
+	if err != nil {
+		return err
 	}
 
-	for updateIdx := range secretMap {
-		m.updateByIndex(updateIdx, secret)
-	}
+	m.updateByIndex(idx, secret)
 	return nil
 }
 

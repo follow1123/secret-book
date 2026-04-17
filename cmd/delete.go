@@ -5,6 +5,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	deleteFlagForce   bool
+	deleteFlagHistory bool
+)
+
 var deleteCmd = &cobra.Command{
 	Use:          "delete id",
 	Aliases:      []string{"rm"},
@@ -13,16 +18,21 @@ var deleteCmd = &cobra.Command{
 	SilenceUsage: true, // 关闭错误时的帮助信息
 	GroupID:      cmdGrpDefault,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// todo 实现强制删除功能，直接删除，不保留到历史列表内
-		// todo 添加 -h 选项，实现根据id删除历史列表内的数据
 		bm, err := bookmanager.New(bookmanager.DefaultSecretsFile())
 		if err != nil {
 			return err
 		}
 		id := args[0]
-		if err := bm.DeleteByIdPrefix(id); err != nil {
-			return err
+		if deleteFlagHistory {
+			if err := bm.DeleteHistoryByIdPrefix(id); err != nil {
+				return err
+			}
+		} else {
+			if err := bm.DeleteByIdPrefix(id, !deleteFlagForce); err != nil {
+				return err
+			}
 		}
+
 		if err := bm.Save(); err != nil {
 			return err
 		}
@@ -32,5 +42,8 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
+	deleteCmd.Flags().BoolVarP(&deleteFlagForce, "force", "f", false, "force delete do not save to history")
+	deleteCmd.Flags().BoolVarP(&deleteFlagHistory, "history", "H", false, "delete history by id")
+
 	rootCmd.AddCommand(deleteCmd)
 }
