@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/follow1123/secret-book/bookmanager"
 	"github.com/spf13/cobra"
 )
@@ -18,7 +20,11 @@ var deleteCmd = &cobra.Command{
 	SilenceUsage: true, // 关闭错误时的帮助信息
 	GroupID:      cmdGrpDefault,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		bm, err := bookmanager.New(bookmanager.DefaultSecretsFile())
+		passwd, err := readPassword()
+		if err != nil {
+			return fmt.Errorf("read password error:\n\t%w", err)
+		}
+		bm, err := bookmanager.New(bookmanager.DefaultSecretsFile(), passwd)
 		if err != nil {
 			return err
 		}
