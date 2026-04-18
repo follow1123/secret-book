@@ -1,64 +1,42 @@
 package bookmanager
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/follow1123/secret-book/encryptor"
 	"github.com/google/uuid"
 )
 
 type BookManager struct {
-	book        *Book
-	bookPath    string
-	passwordKey []byte
+	book      *Book
+	encryptor *encryptor.Encryptor
 }
 
 func New(bookPath string, password string) (*BookManager, error) {
-	_, err := os.Stat(bookPath)
-	notExists := false
+	encryptor, err := encryptor.New(bookPath, password)
 	if err != nil {
-		if os.IsNotExist(err) {
-			notExists = true
-		} else {
-			return nil, fmt.Errorf("check book path %s error:\n\t%w", bookPath, err)
-		}
+		return nil, fmt.Errorf("create encryptor error:\n\t%w", err)
 	}
 
 	book := &Book{}
 
-	key, err := GenerateKey(password)
+	data, err := encryptor.GetData()
 	if err != nil {
-		return nil, fmt.Errorf("gen key error:\n\t%w", err)
+		return nil, fmt.Errorf("get data error:\n\t%w", err)
 	}
 
-	if !notExists {
-		data, err := os.ReadFile(bookPath)
-		if err != nil {
-			return nil, fmt.Errorf("read book path: %s error:\n\t%w", bookPath, err)
-		}
-
-		decryptData, err := Decrypt(data, key)
-		if err != nil {
-			return nil, fmt.Errorf("decrypt secret error:\n\t%w", err)
-		}
-
-		if err := json.Unmarshal(decryptData, book); err != nil {
-			return nil, fmt.Errorf("unmarshal book path: %s error:\n\t%w", bookPath, err)
+	if data != nil {
+		if err := json.Unmarshal(data, book); err != nil {
+			return nil, fmt.Errorf("Incorrect password!\nunmarshal book path: %s error:\n\t%w", bookPath, err)
 		}
 	}
-
-	return &BookManager{book: book, bookPath: bookPath, passwordKey: key}, nil
+	return &BookManager{book: book, encryptor: encryptor}, nil
 }
 
 func (m *BookManager) Save() error {
@@ -66,14 +44,12 @@ func (m *BookManager) Save() error {
 	if err != nil {
 		return fmt.Errorf("marshal data to json error:\n\t%w", err)
 	}
-
-	encryptedSecret, err := Encrypt(data, m.passwordKey)
-	if err != nil {
-		return fmt.Errorf("encrypt secret error:\n\t%w", err)
+	if err := m.encryptor.Update(data); err != nil {
+		return err
 	}
 
-	if err := os.WriteFile(m.bookPath, encryptedSecret, 0664); err != nil {
-		return fmt.Errorf("save to %s error:\n\t%w", m.bookPath, err)
+	if err := m.encryptor.Save(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -353,59 +329,5 @@ func DefaultSecretsFile() string {
 	if err != nil {
 		panic("read current working directory error")
 	}
-	return filepath.Join(path, "secrets.json")
-}
-
-// 根据密码生成一个 32 字节的密钥
-func GenerateKey(password string) ([]byte, error) {
-	// 使用 SHA256 对密码进行哈希处理，得到一个 256 位的密钥
-	hash := sha256.Sum256([]byte(password))
-	return hash[:], nil
-}
-
-// 使用 CTR 模式进行加密
-func Encrypt(plaintext []byte, key []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	// 创建一个新的密文数组，前 16 字节是 IV
-	ciphertext := make([]byte, len(plaintext))
-	iv := make([]byte, aes.BlockSize)
-
-	// 随机生成 IV
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return nil, err
-	}
-
-	// 使用 AES CTR 模式进行加密
-	stream := cipher.NewCTR(block, iv)
-	stream.XORKeyStream(ciphertext, plaintext)
-
-	// 将 IV 和密文连接一起返回
-	return append(iv, ciphertext...), nil
-}
-
-// 使用 CTR 模式进行解密
-func Decrypt(ciphertext []byte, key []byte) ([]byte, error) {
-	if len(ciphertext) < aes.BlockSize {
-		return nil, errors.New("ciphertext too short")
-	}
-
-	// 提取 IV
-	iv := ciphertext[:aes.BlockSize]
-	ciphertext = ciphertext[aes.BlockSize:]
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	// 使用 AES CTR 模式进行解密
-	stream := cipher.NewCTR(block, iv)
-	plaintext := make([]byte, len(ciphertext))
-	stream.XORKeyStream(plaintext, ciphertext)
-
-	return plaintext, nil
+	return filepath.Join(path, "secrets")
 }
