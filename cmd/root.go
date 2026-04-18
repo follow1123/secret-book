@@ -51,5 +51,9 @@ func readPassword() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read password error:\n\t%w", err)
 	}
+	// 清除当前行的提示信息
+	fmt.Print("\r")
+	fmt.Print(strings.Repeat(" ", 50)) // 覆盖多余的字符
+	fmt.Print("\r")                    // 再次回到行首
 	return strings.TrimSpace(string(bytePassword)), nil
 }
