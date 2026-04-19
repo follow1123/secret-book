@@ -58,7 +58,7 @@ set SECRET_BOOK_PASSWORD=password
 $env:SECRET_BOOK_PASSWORD="password"
 
 # Linux
-SECRET_BOOK_PASSWORD=password
+export SECRET_BOOK_PASSWORD=password
 
 # 下面执行命令时就不需要输入密码本的密码了
 ```
