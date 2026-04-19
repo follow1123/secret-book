@@ -17,11 +17,14 @@ var infoCmd = &cobra.Command{
 	SilenceUsage: true, // 关闭错误时的帮助信息
 	GroupID:      cmdGrpDefault,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		passwd, err := readPassword()
+		passwd, err := readPassword("Enter Book Password: ")
 		if err != nil {
 			return fmt.Errorf("read password error:\n\t%w", err)
 		}
-		bm, err := bookmanager.New(bookmanager.DefaultSecretsFile(), passwd)
+		if secretsFile == "" {
+			secretsFile = bookmanager.DefaultSecretsFile()
+		}
+		bm, err := bookmanager.New(secretsFile, passwd)
 		if err != nil {
 			return err
 		}
@@ -38,7 +41,7 @@ var infoCmd = &cobra.Command{
 		tableData = append(tableData, []string{"PLATFORM", secret.Platform})
 		tableData = append(tableData, []string{"ACCOUNT", secret.Account})
 		tableData = append(tableData, []string{"PASSWORD", secret.Password})
-		tableData = append(tableData, []string{"REMARK", secret.Remark})
+		tableData = append(tableData, []string{"REMARK", addNewlinesEveryNChars(secret.Remark, 30)})
 		tableData = append(tableData, []string{"CREATE TIME", secret.CreateTime})
 
 		if err := table.Bulk(tableData); err != nil {

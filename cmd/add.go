@@ -14,11 +14,14 @@ var addCmd = &cobra.Command{
 	SilenceUsage: true, // 关闭错误时的帮助信息
 	GroupID:      cmdGrpDefault,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		passwd, err := readPassword()
+		passwd, err := readPassword("Enter Book Password: ")
 		if err != nil {
 			return fmt.Errorf("read password error:\n\t%w", err)
 		}
-		bm, err := bookmanager.New(bookmanager.DefaultSecretsFile(), passwd)
+		if secretsFile == "" {
+			secretsFile = bookmanager.DefaultSecretsFile()
+		}
+		bm, err := bookmanager.New(secretsFile, passwd)
 		if err != nil {
 			return err
 		}
@@ -27,7 +30,7 @@ var addCmd = &cobra.Command{
 			Account:  args[1],
 		}
 
-		password, err := readPassword()
+		password, err := readPassword("Enter Password:")
 		if err != nil {
 			return err
 		}

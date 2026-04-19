@@ -20,6 +20,8 @@ const (
 
 var rootFlagVersion bool
 
+var secretsFile string
+
 var rootCmd = &cobra.Command{
 	Use:   "sbook",
 	Short: "secret book",
@@ -40,13 +42,20 @@ func Execute() {
 }
 
 func init() {
+
+	rootCmd.PersistentFlags().StringVar(&secretsFile, "secrets-path", "", "target secrets file path")
 	rootCmd.Flags().BoolVarP(&rootFlagVersion, "version", "v", false, "print version")
 
 	rootCmd.AddGroup(&cobra.Group{ID: cmdGrpDefault, Title: "Available Commands"})
 }
 
-func readPassword() (string, error) {
-	fmt.Print("Enter Password: ")
+func readPassword(prompt string) (string, error) {
+	passwd := strings.TrimSpace(os.Getenv("SECRET_BOOK_PASSWORD"))
+	if passwd != "" {
+		return passwd, nil
+	}
+
+	fmt.Print(prompt)
 	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", fmt.Errorf("read password error:\n\t%w", err)
@@ -56,4 +65,22 @@ func readPassword() (string, error) {
 	fmt.Print(strings.Repeat(" ", 50)) // 覆盖多余的字符
 	fmt.Print("\r")                    // 再次回到行首
 	return strings.TrimSpace(string(bytePassword)), nil
+}
+
+func addNewlinesEveryNChars(s string, charLimit int) string {
+	// 将字符串转换为 []rune，确保每个字符完整处理
+	runes := []rune(s)
+	var result []rune
+
+	// 遍历并每charLimit个字符后添加换行符
+	for i := range runes {
+		// 每charLimit个字符插入一个换行符
+		if i > 0 && i%charLimit == 0 {
+			result = append(result, '\n') // 添加换行符
+		}
+		result = append(result, runes[i]) // 添加当前字符
+	}
+
+	// 返回转换后的字符串
+	return string(result)
 }
