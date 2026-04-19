@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/follow1123/secret-book/bookmanager"
@@ -17,9 +16,9 @@ var infoCmd = &cobra.Command{
 	SilenceUsage: true, // 关闭错误时的帮助信息
 	GroupID:      cmdGrpDefault,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		passwd, err := readPassword("Enter Book Password: ")
+		passwd, err := readBookPassword()
 		if err != nil {
-			return fmt.Errorf("read password error:\n\t%w", err)
+			return err
 		}
 		if secretsFile == "" {
 			secretsFile = bookmanager.DefaultSecretsFile()

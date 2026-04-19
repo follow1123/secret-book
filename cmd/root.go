@@ -49,12 +49,23 @@ func init() {
 	rootCmd.AddGroup(&cobra.Group{ID: cmdGrpDefault, Title: "Available Commands"})
 }
 
-func readPassword(prompt string) (string, error) {
-	passwd := strings.TrimSpace(os.Getenv("SECRET_BOOK_PASSWORD"))
-	if passwd != "" {
-		return passwd, nil
+func readBookPassword() (string, error) {
+	passwd := readPasswordFromEnv()
+	if passwd == "" {
+		p, err := readPassword("Enter Book Password: ")
+		if err != nil {
+			return "", fmt.Errorf("read password error:\n\t%w", err)
+		}
+		passwd = p
 	}
+	return passwd, nil
+}
 
+func readPasswordFromEnv() string {
+	return strings.TrimSpace(os.Getenv("SECRET_BOOK_PASSWORD"))
+}
+
+func readPassword(prompt string) (string, error) {
 	fmt.Print(prompt)
 	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
