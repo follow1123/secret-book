@@ -33,8 +33,10 @@ func New(bookPath string, password string) (*BookManager, error) {
 
 	if data != nil {
 		if err := json.Unmarshal(data, book); err != nil {
+			encryptor.AttemptFailed()
 			return nil, fmt.Errorf("Incorrect password!\nunmarshal book path: %s error:\n\t%w", bookPath, err)
 		}
+		encryptor.AttemptSucceed()
 	}
 	return &BookManager{book: book, encryptor: encryptor}, nil
 }

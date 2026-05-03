@@ -89,6 +89,22 @@ func (e *Encryptor) Save() error {
 	return nil
 }
 
+func (e *Encryptor) AttemptFailed() {
+	if e.pack.Data != nil {
+		e.pack.Attempts = e.pack.Attempts - 1
+		_ = e.Save()
+	}
+}
+
+func (e *Encryptor) AttemptSucceed() {
+	if e.pack.Data != nil {
+		if e.pack.Attempts != attempts {
+			e.pack.Attempts = attempts
+			_ = e.Save()
+		}
+	}
+}
+
 type Package struct {
 	Salt     []byte
 	Data     []byte
@@ -125,15 +141,19 @@ func unpack(data []byte) (*Package, error) {
 	if _, err := datBuf.Read(dataBytes); err != nil {
 		return nil, fmt.Errorf("read data error:\n\t%w", err)
 	}
-	attempts, err := datBuf.ReadByte()
+	atps, err := datBuf.ReadByte()
 	if err != nil {
 		return nil, fmt.Errorf("read attempts error:\n\t%w", err)
+	}
+	if atps == 0 {
+		_, _ = rand.Read(dataBytes)
+		atps = attempts
 	}
 
 	return &Package{
 		Salt:     saltBytes,
 		Data:     dataBytes,
-		Attempts: attempts,
+		Attempts: atps,
 	}, nil
 }
 
