@@ -19,11 +19,11 @@ jobs:
           export GOOS=linux
           export GOARCH=amd64
           output_name=sbook-$GOOS-$GOARCH
-          go build -o dist/$output_name ./
+          CGO_ENABLED=0 go build -o dist/$output_name ./
 
           export GOOS=windows
           output_name=sbook-$GOOS-$GOARCH.exe
-          go build -o dist/$output_name ./
+          CGO_ENABLED=0 go build -o dist/$output_name ./
       - name: Sum
         run: |
           cd dist
